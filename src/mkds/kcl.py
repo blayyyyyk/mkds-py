@@ -1,4 +1,4 @@
-from utils import (
+from .utils import (
     read_u16,
     read_vector_3d,
     read_u32,

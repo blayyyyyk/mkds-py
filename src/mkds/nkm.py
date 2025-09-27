@@ -1,4 +1,4 @@
-from utils import (
+from .utils import (
     read_u8,
     read_u16,
     read_u32,
