@@ -1,9 +1,11 @@
 from .utils import (
     read_u16,
-    read_vector_3d,
+    read_vector_3d_fx16,
+    read_vector_3d_fx32,
     read_u32,
     read_fx32,
-    read_s32
+    read_s32,
+    slice_bits
 )
 from typing import Sequence, Self
 
@@ -48,7 +50,7 @@ class PrismsBase:
         _enrm1_i: Sequence[int],
         _enrm2_i: Sequence[int],
         _enrm3_i: Sequence[int],
-        _attributes: Sequence[int]
+        _attributes: Sequence[Sequence[int]]
     ):
         self.height = _height
         self.pos_i = _pos_i
@@ -68,8 +70,21 @@ class PrismsBase:
             [read_u16(data, i + 0x08) for i in iter],
             [read_u16(data, i + 0x0A) for i in iter],
             [read_u16(data, i + 0x0C) for i in iter],
-            [read_u16(data, i + 0x0E) for i in iter]
+            [PrismsBase.parse_attributes(read_u16(data, i + 0x0E)) for i in iter]
         )
+        
+    @staticmethod
+    def parse_attributes(bits: int) -> list[int]:
+        return [
+            slice_bits(bits, 0, 1), # map 2d shadow
+            slice_bits(bits, 1, 4), # light id (bit 1-3)
+            slice_bits(bits, 4, 5), # ignore drivers
+            slice_bits(bits, 5, 8), # collision variant
+            slice_bits(bits, 8, 13), # collision type
+            slice_bits(bits, 13, 14), # ignore items
+            slice_bits(bits, 14, 15), # is wall
+            slice_bits(bits, 15, 16) # is floor
+        ]
 
 
 class KCLBase:
@@ -146,13 +161,13 @@ class KCLBase:
         self.sphere_radius = _sphere_radius
         
     @classmethod
-    def from_bytes(cls, data: bytes) -> Self:
+    def from_bytes(cls, data: bytes, **kwargs) -> Self:
         _positions_offset = read_u32(data, 0x00)
         _normals_offset = read_u32(data, 0x04)
         _prisms_offset = read_u32(data, 0x08)
         _block_data_offset = read_u32(data, 0x0C)
         _prism_thickness = read_fx32(data, 0x10)
-        _area_min_pos = read_vector_3d(data, 0x14)
+        _area_min_pos = read_vector_3d_fx32(data, 0x14)
         _area_x_width_mask = read_u32(data, 0x20)
         _area_y_width_mask = read_u32(data, 0x24)
         _area_z_width_mask = read_u32(data, 0x28)
@@ -170,7 +185,8 @@ class KCLBase:
             prisms.enrm1_i,
             prisms.enrm2_i,
             prisms.enrm3_i,
-            prisms.attributes
+            prisms.attributes,
+            **kwargs
         )
         return cls(
             data,
@@ -189,7 +205,8 @@ class KCLBase:
             _block_width_shift,
             _area_x_blocks_shift,
             _area_xy_blocks_shift,
-            _sphere_radius
+            _sphere_radius,
+            **kwargs
         )
         
         
@@ -207,11 +224,15 @@ class KCLBase:
         list
             List of 3D vectors (tuples of floats)
         """
+        position_size = 0x0C
         start = positions_offset
         section_size = max(prisms.pos_i)
-        end = section_size * 0x0C + start + 0x0C
-        d = data[start:end]
-        return [read_vector_3d(d, i) for i in range(0, len(d), 0x0C)]
+        end = (section_size + 1) * position_size + start
+        positions = []
+        for offset in range(start, end, position_size):
+            positions.append(read_vector_3d_fx32(data, offset))
+            
+        return positions
 
     @staticmethod
     def _parse_normals(data: bytes, prisms: PrismsBase, normals_offset: int):
@@ -226,6 +247,7 @@ class KCLBase:
         list
             List of 3D normal vectors (tuples of floats)
         """
+        normal_size = 0x06
         start = normals_offset
         section_size = max([
             *prisms.fnrm_i,
@@ -233,11 +255,14 @@ class KCLBase:
             *prisms.enrm2_i,
             *prisms.enrm3_i,
         ])
-        end = section_size * 0x0C + start + 0x0C
-        d = data[start:end]
-        return [read_vector_3d(d, i) for i in range(0, len(d), 0x0C)]
+        end = (section_size + 1) * normal_size + start
+        normals = []
+        for offset in range(start, end, normal_size):
+            normals.append(read_vector_3d_fx16(data, offset))
+            
+        return normals
          
-    def search_block(self, point):
+    def search_block(self, point: tuple[float, float, float] | list[float, float, float]):
         """
         Return the offset of the leaf node containing a queried point
         """
@@ -329,7 +354,7 @@ class Prisms(PrismsBase):
         _enrm1_i: list[int],
         _enrm2_i: list[int],
         _enrm3_i: list[int],
-        _attributes: list[int]
+        _attributes: list[list[int]]
     ):
         super().__init__(
             _height,

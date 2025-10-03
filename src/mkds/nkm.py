@@ -6,8 +6,8 @@ from .utils import (
     read_s32,
     read_fx16,
     read_fx32,
-    read_vector_2d,
-    read_vector_3d
+    read_vector_2d_fx32,
+    read_vector_3d_fx32
 )
 
 
@@ -107,9 +107,9 @@ class OBJI(Section):
     """
     def __init__(self, data):
         super().__init__(data, 0x3C)
-        self.rot_vec1 = [read_vector_3d(d, 0x00) for d in self]
-        self.rot_vec2 = [read_vector_3d(d, 0x0C) for d in self]
-        self.scale_vec = [read_vector_3d(d, 0x18) for d in self]
+        self.rot_vec1 = [read_vector_3d_fx32(d, 0x00) for d in self]
+        self.rot_vec2 = [read_vector_3d_fx32(d, 0x0C) for d in self]
+        self.scale_vec = [read_vector_3d_fx32(d, 0x18) for d in self]
         self.object_id = [read_u16(d, 0x24) for d in self]
         self.route_id = [read_u16(d, 0x26) for d in self]
         self.object_settings = [
@@ -202,7 +202,7 @@ class POIT(Section):
     """
     def __init__(self, data):
         super().__init__(data, 0x14)
-        self.position = [read_vector_3d(d, 0x00) for d in self]
+        self.position = [read_vector_3d_fx32(d, 0x00) for d in self]
         self.point_index = [read_u8(d, 0x0C) for d in self]
         self.unknown1 = [read_u8(d, 0x0D) for d in self]
         self.point_duration = [read_s16(d, 0x0E) for d in self]
@@ -314,8 +314,8 @@ class KTPS(Section):
     """
     def __init__(self, data):
         super().__init__(data, 0x1C)
-        self.position = [read_vector_3d(d, 0x00) for d in self]
-        self.rot_vec = [read_vector_3d(d, 0x0C) for d in self]
+        self.position = [read_vector_3d_fx32(d, 0x00) for d in self]
+        self.rot_vec = [read_vector_3d_fx32(d, 0x0C) for d in self]
         self.padding = [read_u16(d, 0x18) for d in self]
         self.start_position_index = [read_u16(d, 0x1A) for d in self]
 
@@ -360,8 +360,8 @@ class KTPJ(Section):
     """
     def __init__(self, data):
         super().__init__(data, 0x20)
-        self.position = [read_vector_3d(d, 0x00) for d in self]
-        self.rot_vec = [read_vector_3d(d, 0x0C) for d in self]
+        self.position = [read_vector_3d_fx32(d, 0x00) for d in self]
+        self.rot_vec = [read_vector_3d_fx32(d, 0x0C) for d in self]
         self.enemy_position_id = [read_u16(d, 0x18) for d in self]  # EPOI reference
         self.item_position_id = [read_u16(d, 0x1A) for d in self]   # IPOI reference
         # Respawn ID may not exist in very old versions; this read assumes it does.
@@ -398,8 +398,8 @@ class KTP2(Section):
     """
     def __init__(self, data):
         super().__init__(data, 0x1C)
-        self.position = [read_vector_3d(d, 0x00) for d in self]
-        self.rot_vec = [read_vector_3d(d, 0x0C) for d in self]
+        self.position = [read_vector_3d_fx32(d, 0x00) for d in self]
+        self.rot_vec = [read_vector_3d_fx32(d, 0x0C) for d in self]
         self.padding = [read_u16(d, 0x18) for d in self]
         self.index = [read_u16(d, 0x1A) for d in self]
 
@@ -434,8 +434,8 @@ class KTPC(Section):
     """
     def __init__(self, data):
         super().__init__(data, 0x1C)
-        self.position = [read_vector_3d(d, 0x00) for d in self]
-        self.rot_vec = [read_vector_3d(d, 0x0C) for d in self]
+        self.position = [read_vector_3d_fx32(d, 0x00) for d in self]
+        self.rot_vec = [read_vector_3d_fx32(d, 0x0C) for d in self]
         self.unknown = [read_u16(d, 0x18) for d in self]
         self.cannon_index = [read_u16(d, 0x1A) for d in self]
 
@@ -470,8 +470,8 @@ class KTPM(Section):
     """
     def __init__(self, data):
         super().__init__(data, 0x1C)
-        self.position = [read_vector_3d(d, 0x00) for d in self]
-        self.rot_vec = [read_vector_3d(d, 0x0C) for d in self]
+        self.position = [read_vector_3d_fx32(d, 0x00) for d in self]
+        self.rot_vec = [read_vector_3d_fx32(d, 0x0C) for d in self]
         self.padding = [read_u16(d, 0x18) for d in self]
         self.index = [read_u16(d, 0x1A) for d in self]
 
@@ -520,8 +520,8 @@ class CPOI(Section):
     """
     def __init__(self, data):
         super().__init__(data, 0x24)
-        self.position1 = [read_vector_2d(d, 0x00) for d in self]
-        self.position2 = [read_vector_2d(d, 0x08) for d in self]
+        self.position1 = [read_vector_2d_fx32(d, 0x00) for d in self]
+        self.position2 = [read_vector_2d_fx32(d, 0x08) for d in self]
         self.sinus = [read_fx32(d, 0x10) for d in self]
         self.cosinus = [read_fx32(d, 0x14) for d in self]
         self.distance = [read_fx32(d, 0x18) for d in self]
@@ -608,7 +608,7 @@ class IPOI(Section):
     """
     def __init__(self, data):
         super().__init__(data, 0x14)
-        self.position = [read_vector_3d(d, 0x00) for d in self]
+        self.position = [read_vector_3d_fx32(d, 0x00) for d in self]
         self.point_scale = [read_fx32(d, 0x0C) for d in self]
         self.unknown = [read_u32(d, 0x10) for d in self]
 
@@ -683,7 +683,7 @@ class EPOI(Section):
     """
     def __init__(self, data):
         super().__init__(data, 0x18)
-        self.position = [read_vector_3d(d, 0x00) for d in self]
+        self.position = [read_vector_3d_fx32(d, 0x00) for d in self]
         self.point_scale = [read_fx32(d, 0x0C) for d in self]
         self.drifting = [read_u16(d, 0x10) for d in self]
         self.unknown1 = [read_u16(d, 0x12) for d in self]
@@ -754,7 +754,7 @@ class MEPO(Section):
     """
     def __init__(self, data):
         super().__init__(data, 0x18)
-        self.position = [read_vector_3d(d, 0x00) for d in self]
+        self.position = [read_vector_3d_fx32(d, 0x00) for d in self]
         self.point_scale = [read_fx32(d, 0x0C) for d in self]
         self.drifting = [read_u32(d, 0x10) for d in self]
         self.unknown = [read_u32(d, 0x14) for d in self]
@@ -844,11 +844,11 @@ class AREA(Section):
     """
     def __init__(self, data):
         super().__init__(data, 0x48)
-        self.position = [read_vector_3d(d, 0x00) for d in self]
-        self.length_vec = [read_vector_3d(d, 0x0C) for d in self]
-        self.x_vec = [read_vector_3d(d, 0x18) for d in self]
-        self.y_vec = [read_vector_3d(d, 0x24) for d in self]
-        self.z_vec = [read_vector_3d(d, 0x30) for d in self]
+        self.position = [read_vector_3d_fx32(d, 0x00) for d in self]
+        self.length_vec = [read_vector_3d_fx32(d, 0x0C) for d in self]
+        self.x_vec = [read_vector_3d_fx32(d, 0x18) for d in self]
+        self.y_vec = [read_vector_3d_fx32(d, 0x24) for d in self]
+        self.z_vec = [read_vector_3d_fx32(d, 0x30) for d in self]
         self.unknown1 = [read_u16(d, 0x3C) for d in self]
         self.unknown2 = [read_u16(d, 0x3E) for d in self]
         self.unknown3 = [read_u16(d, 0x40) for d in self]
@@ -922,10 +922,10 @@ class CAME(Section):
     """
     def __init__(self, data):
         super().__init__(data, 0x4C)
-        self.position1 = [read_vector_3d(d, 0x00) for d in self]
-        self.rot_vec = [read_vector_3d(d, 0x0C) for d in self]
-        self.position2 = [read_vector_3d(d, 0x18) for d in self]
-        self.position3 = [read_vector_3d(d, 0x24) for d in self]
+        self.position1 = [read_vector_3d_fx32(d, 0x00) for d in self]
+        self.rot_vec = [read_vector_3d_fx32(d, 0x0C) for d in self]
+        self.position2 = [read_vector_3d_fx32(d, 0x18) for d in self]
+        self.position3 = [read_vector_3d_fx32(d, 0x24) for d in self]
         self.fov_begin = [read_u16(d, 0x30) for d in self]
         self.fov_begin_sine = [read_fx16(d, 0x32) for d in self]
         self.fov_begin_cosine = [read_fx16(d, 0x34) for d in self]
@@ -1029,7 +1029,7 @@ class NKM:
         self._CAME = CAME(self._data[self._CAME_offset:])
 
     @classmethod
-    def from_file(cls, path: str):
+    def from_file(cls, path: str, **kwargs):
         """
         Load an NKM file from disk and parse its sections.
 
@@ -1044,4 +1044,4 @@ class NKM:
         if not os.path.exists(path):
             raise FileNotFoundError(f"NKM file not found at {path}")
         with open(path, 'rb') as f:
-            return cls(f.read())
+            return cls(f.read(), **kwargs)
