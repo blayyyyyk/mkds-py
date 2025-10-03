@@ -2,11 +2,376 @@ from .utils import (
     read_u16,
     read_vector_3d,
     read_u32,
-    read_fx32
+    read_fx32,
+    read_s32
 )
+from typing import Sequence, Self
 
 
-class KCL:
+class PrismsBase:
+    """
+    Represents the triangular prisms section of the KCL file.
+
+    Each prism is a 0x10 byte structure with the following layout:
+
+    Offset | Type | Name      | Description
+    -------|------|----------|---------------------------------------------
+    0x00   | f32  | height   | Prism height from vertex 1 to opposite side
+    0x04   | u16  | pos_i    | Index of first vertex in positions array
+    0x06   | u16  | fnrm_i   | Face normal index
+    0x08   | u16  | enrm1_i  | Edge normal A index
+    0x0A   | u16  | enrm2_i  | Edge normal B index
+    0x0C   | u16  | enrm3_i  | Edge normal C index
+    0x0E   | u16  | attributes | Collision attributes
+
+    Attributes
+    ----------
+    _height : list[float]
+        Prism heights
+    _pos_i : list[int]
+        Vertex indices
+    _fnrm_i : list[int]
+        Face normal indices
+    _enrm1_i : list[int]
+        Edge normal 1 indices
+    _enrm2_i : list[int]
+        Edge normal 2 indices
+    _enrm3_i : list[int]
+        Edge normal 3 indices
+    _attributes : list[int]
+        Collision attribute flags
+    """
+    def __init__(self,
+        _height: Sequence[float],
+        _pos_i: Sequence[int],
+        _fnrm_i: Sequence[int],
+        _enrm1_i: Sequence[int],
+        _enrm2_i: Sequence[int],
+        _enrm3_i: Sequence[int],
+        _attributes: Sequence[int]
+    ):
+        self.height = _height
+        self.pos_i = _pos_i
+        self.fnrm_i = _fnrm_i
+        self.enrm1_i = _enrm1_i
+        self.enrm2_i = _enrm2_i
+        self.enrm3_i = _enrm3_i
+        self.attributes = _attributes
+        
+    @classmethod
+    def from_bytes(cls, data: bytes) -> Self:
+        iter = range(0, len(data), 0x10)
+        return cls(
+            [read_fx32(data, i + 0x00) for i in iter],
+            [read_u16(data, i + 0x04) for i in iter],
+            [read_u16(data, i + 0x06) for i in iter],
+            [read_u16(data, i + 0x08) for i in iter],
+            [read_u16(data, i + 0x0A) for i in iter],
+            [read_u16(data, i + 0x0C) for i in iter],
+            [read_u16(data, i + 0x0E) for i in iter]
+        )
+
+
+class KCLBase:
+    """
+    Represents the triangular prisms section of the KCL file.
+
+    Each prism is a 0x10 byte structure with the following layout:
+
+    Offset | Type | Name      | Description
+    -------|------|----------|---------------------------------------------
+    0x00   | f32  | height   | Prism height from vertex 1 to opposite side
+    0x04   | u16  | pos_i    | Index of first vertex in positions array
+    0x06   | u16  | fnrm_i   | Face normal index
+    0x08   | u16  | enrm1_i  | Edge normal A index
+    0x0A   | u16  | enrm2_i  | Edge normal B index
+    0x0C   | u16  | enrm3_i  | Edge normal C index
+    0x0E   | u16  | attributes | Collision attributes
+
+    Attributes
+    ----------
+    _height : list[float]
+        Prism heights
+    _pos_i : list[int]
+        Vertex indices
+    _fnrm_i : list[int]
+        Face normal indices
+    _enrm1_i : list[int]
+        Edge normal 1 indices
+    _enrm2_i : list[int]
+        Edge normal 2 indices
+    _enrm3_i : list[int]
+        Edge normal 3 indices
+    _attributes : list[int]
+        Collision attribute flags
+    """
+    prism_cls = PrismsBase
+    
+    def __init__(self, 
+        data: bytes,
+        prisms: PrismsBase,
+        positions: Sequence[Sequence[float]],
+        normals: Sequence[Sequence[float]],
+        _positions_offset: int,
+        _normals_offset: int,
+        _prisms_offset: int,
+        _block_data_offset: int,
+        _prism_thickness: float,
+        _area_min_pos: tuple[float, float, float],
+        _area_x_width_mask: int,
+        _area_y_width_mask: int,
+        _area_z_width_mask: int,
+        _block_width_shift: int,
+        _area_x_blocks_shift: int,
+        _area_xy_blocks_shift: int,
+        _sphere_radius: int | None,
+        
+    ):
+        self.data = data
+        self.prisms = prisms
+        self.positions = positions
+        self.normals = normals
+        self.positions_offset = _positions_offset
+        self.normals_offset = _normals_offset
+        self.prisms_offset = _prisms_offset
+        self.block_data_offset = _block_data_offset
+        self.prism_thickness = _prism_thickness
+        self.area_min_pos = _area_min_pos
+        self.area_x_width_mask = _area_x_width_mask
+        self.area_y_width_mask = _area_y_width_mask
+        self.area_z_width_mask = _area_z_width_mask
+        self.block_width_shift = _block_width_shift
+        self.area_x_blocks_shift = _area_x_blocks_shift
+        self.area_xy_blocks_shift = _area_xy_blocks_shift
+        self.sphere_radius = _sphere_radius
+        
+    @classmethod
+    def from_bytes(cls, data: bytes) -> Self:
+        _positions_offset = read_u32(data, 0x00)
+        _normals_offset = read_u32(data, 0x04)
+        _prisms_offset = read_u32(data, 0x08)
+        _block_data_offset = read_u32(data, 0x0C)
+        _prism_thickness = read_fx32(data, 0x10)
+        _area_min_pos = read_vector_3d(data, 0x14)
+        _area_x_width_mask = read_u32(data, 0x20)
+        _area_y_width_mask = read_u32(data, 0x24)
+        _area_z_width_mask = read_u32(data, 0x28)
+        _block_width_shift = read_u32(data, 0x2C)
+        _area_x_blocks_shift = read_u32(data, 0x30)
+        _area_xy_blocks_shift = read_u32(data, 0x34)
+        _sphere_radius = None#read_f32(data, 0x38)
+        prisms = PrismsBase.from_bytes(data[_prisms_offset+0x10:_block_data_offset])
+        positions = KCLBase._parse_positions(data, prisms, _positions_offset)
+        normals = KCLBase._parse_normals(data, prisms, _normals_offset)
+        prisms = cls.prism_cls(
+            prisms.height,
+            prisms.pos_i,
+            prisms.fnrm_i,
+            prisms.enrm1_i,
+            prisms.enrm2_i,
+            prisms.enrm3_i,
+            prisms.attributes
+        )
+        return cls(
+            data,
+            prisms, 
+            positions, 
+            normals,
+            _positions_offset,
+            _normals_offset,
+            _prisms_offset,
+            _block_data_offset,
+            _prism_thickness,
+            _area_min_pos,
+            _area_x_width_mask,
+            _area_y_width_mask,
+            _area_z_width_mask,
+            _block_width_shift,
+            _area_x_blocks_shift,
+            _area_xy_blocks_shift,
+            _sphere_radius
+        )
+        
+        
+        
+    @staticmethod
+    def _parse_positions(data: bytes, prisms: PrismsBase, positions_offset: int):
+        """
+        Parse position vectors from the file.
+
+        Each position vector consists of 3 consecutive floats (X, Y, Z).
+        The number of positions is determined from the prisms indices.
+
+        Returns
+        -------
+        list
+            List of 3D vectors (tuples of floats)
+        """
+        start = positions_offset
+        section_size = max(prisms.pos_i)
+        end = section_size * 0x0C + start + 0x0C
+        d = data[start:end]
+        return [read_vector_3d(d, i) for i in range(0, len(d), 0x0C)]
+
+    @staticmethod
+    def _parse_normals(data: bytes, prisms: PrismsBase, normals_offset: int):
+        """
+        Parse normal vectors from the file.
+
+        Each normal vector consists of 3 consecutive floats (X, Y, Z).
+        The number of normals is determined from all prism normal indices.
+
+        Returns
+        -------
+        list
+            List of 3D normal vectors (tuples of floats)
+        """
+        start = normals_offset
+        section_size = max([
+            *prisms.fnrm_i,
+            *prisms.enrm1_i,
+            *prisms.enrm2_i,
+            *prisms.enrm3_i,
+        ])
+        end = section_size * 0x0C + start + 0x0C
+        d = data[start:end]
+        return [read_vector_3d(d, i) for i in range(0, len(d), 0x0C)]
+         
+    def search_block(self, point):
+        """
+        Return the offset of the leaf node containing a queried point
+        """
+        block_start = self.block_data_offset
+        block_data = self.data[block_start:]
+        
+        px, py, pz = point
+        minx, miny, minz = self.area_min_pos
+
+        x = int(px - minx)
+        if (x & self.area_x_width_mask) != 0:
+            return None
+
+        y = int(py - miny)
+        if (y & self.area_y_width_mask) != 0:
+            return None
+
+        z = int(pz - minz)
+        if (z & self.area_z_width_mask) != 0:
+            return None
+
+        # initialize root
+        shift = self.block_width_shift
+        cur_block_offset = 0  # root at start of block_data
+
+        index = 4 * (((z >> shift) << self.area_xy_blocks_shift)
+            | ((y >> shift) << self.area_x_blocks_shift)
+                    | (x >> shift))
+
+        while True:
+            offset = read_u32(block_data, cur_block_offset + index)
+
+            if (offset & 0x80000000) != 0:
+                # negative flag = leaf node
+                break
+
+            shift -= 1
+            cur_block_offset += offset
+
+            # initialize next index
+            index = 4 * (((z >> shift) & 1) << 2
+                        | ((y >> shift) & 1) << 1
+                        | ((x >> shift) & 1))
+
+        # leaf = return pointer into block_data (as slice)
+        leaf_offset = cur_block_offset + (offset & 0x7FFFFFFF)
+        return leaf_offset
+        
+        
+        
+class Prisms(PrismsBase):
+    """
+    Represents the triangular prisms section of the KCL file.
+
+    Each prism is a 0x10 byte structure with the following layout:
+
+    Offset | Type | Name      | Description
+    -------|------|----------|---------------------------------------------
+    0x00   | f32  | height   | Prism height from vertex 1 to opposite side
+    0x04   | u16  | pos_i    | Index of first vertex in positions array
+    0x06   | u16  | fnrm_i   | Face normal index
+    0x08   | u16  | enrm1_i  | Edge normal A index
+    0x0A   | u16  | enrm2_i  | Edge normal B index
+    0x0C   | u16  | enrm3_i  | Edge normal C index
+    0x0E   | u16  | attributes | Collision attributes
+
+    Attributes
+    ----------
+    _height : list[float]
+        Prism heights
+    _pos_i : list[int]
+        Vertex indices
+    _fnrm_i : list[int]
+        Face normal indices
+    _enrm1_i : list[int]
+        Edge normal 1 indices
+    _enrm2_i : list[int]
+        Edge normal 2 indices
+    _enrm3_i : list[int]
+        Edge normal 3 indices
+    _attributes : list[int]
+        Collision attribute flags
+    """
+
+    def __init__(self, 
+        _height: list[float],
+        _pos_i: list[int],
+        _fnrm_i: list[int],
+        _enrm1_i: list[int],
+        _enrm2_i: list[int],
+        _enrm3_i: list[int],
+        _attributes: list[int]
+    ):
+        super().__init__(
+            _height,
+            _pos_i,
+            _fnrm_i,
+            _enrm1_i,
+            _enrm2_i,
+            _enrm3_i,
+            _attributes
+        )
+        self.height = _height
+        self.pos_i = _pos_i
+        self.fnrm_i = _fnrm_i
+        self.enrm1_i = _enrm1_i
+        self.enrm2_i = _enrm2_i
+        self.enrm3_i = _enrm3_i
+        self.attributes = _attributes
+
+    def __getitem__(self, idx):
+        """
+        Return all attributes of the prism at index `idx`.
+        """
+        if idx >= len(self):
+            raise IndexError("Index out of range")
+        return [arr[idx] for arr in self.__dict__.values()]
+
+    def __len__(self):
+        """
+        Return the number of prisms in the section.
+        """
+        return len(self.pos_i)
+
+    def __iter__(self):
+        """
+        Iterate over all prisms, yielding full attribute lists.
+        """
+        for i in range(len(self)):
+            yield self[i // 0x10]    
+        
+        
+
+class KCL(KCLBase):
     """
     Represents a KCL (collision) file.
 
@@ -67,28 +432,64 @@ class KCL:
     _normals : list
         List of normal vectors
     """
-    def __init__(self, data: bytes):
-        self._data = data
-        
-        # Parsed Header
-        self._positions_offset = read_u32(data, 0x00)
-        self._normals_offset = read_u32(data, 0x04)
-        self._prisms_offset = read_u32(data, 0x08)
-        self._block_data_offset = read_u32(data, 0x0C)
-        self._prism_thickness = read_fx32(data, 0x10)
-        self._area_min_pos = read_vector_3d(data, 0x14)
-        self._area_x_width_mask = read_u32(data, 0x20)
-        self._area_y_width_mask = read_u32(data, 0x24)
-        self._area_z_width_mask = read_u32(data, 0x28)
-        self._block_width_shift = read_u32(data, 0x2C)
-        self._area_x_blocks_shift = read_u32(data, 0x30)
-        self._area_xy_blocks_shift = read_u32(data, 0x34)
-        self._sphere_radius = None#read_f32(data, 0x38)
-        
-        # Parsed Data
-        self._prisms = Prisms(data[self._prisms_offset+0x10:self._block_data_offset])
-        self._positions = self._parse_positions(data)
-        self._normals = self._parse_normals(data)
+    prism_cls = Prisms
+    
+    def __init__(
+        self, 
+        data: bytes,
+        prisms: Prisms,
+        positions: list[list[float]],
+        normals: list[list[float]],
+        _positions_offset: int,
+        _normals_offset: int,
+        _prisms_offset: int,
+        _block_data_offset: int,
+        _prism_thickness: float,
+        _area_min_pos: tuple[float, float, float],
+        _area_x_width_mask: int,
+        _area_y_width_mask: int,
+        _area_z_width_mask: int,
+        _block_width_shift: int,
+        _area_x_blocks_shift: int,
+        _area_xy_blocks_shift: int,
+        _sphere_radius: int | None,
+    ):
+        super().__init__(
+            data,
+            prisms,
+            positions,
+            normals,
+            _positions_offset,
+            _normals_offset,
+            _prisms_offset,
+            _block_data_offset,
+            _prism_thickness,
+            _area_min_pos,
+            _area_x_width_mask,
+            _area_y_width_mask,
+            _area_z_width_mask,
+            _block_width_shift,
+            _area_x_blocks_shift,
+            _area_xy_blocks_shift,
+            _sphere_radius
+        )
+        self.data = data
+        self.prisms = prisms
+        self.positions = positions
+        self.normals = normals
+        self.positions_offset = _positions_offset
+        self.normals_offset = _normals_offset
+        self.prisms_offset = _prisms_offset
+        self.block_data_offset = _block_data_offset
+        self.prism_thickness = _prism_thickness
+        self.area_min_pos = _area_min_pos
+        self.area_x_width_mask = _area_x_width_mask
+        self.area_y_width_mask = _area_y_width_mask
+        self.area_z_width_mask = _area_z_width_mask
+        self.block_width_shift = _block_width_shift
+        self.area_x_blocks_shift = _area_x_blocks_shift
+        self.area_xy_blocks_shift = _area_xy_blocks_shift
+        self.sphere_radius = _sphere_radius
 
     def __str__(self):
         """
@@ -110,143 +511,20 @@ class KCL:
 
         return f"""
         Positions:
-        {str_vec(self._positions) if len(self._positions) != 0 else "No entries"}
+        {str_vec(self.positions) if len(self.positions) != 0 else "No entries"}
         Normals:
-        {str_vec(self._normals) if len(self._normals) != 0 else "No entries"}
+        {str_vec(self.normals) if len(self.normals) != 0 else "No entries"}
         Prisms:
-        {len(self._prisms) if len(self._prisms) != 0 else "No entries"}\n
+        {len(self.prisms) if len(self.prisms) != 0 else "No entries"}\n
         """
-
+        
+    
+ 
     @classmethod
-    def from_file(cls, path, device=None):
-        """
-        Load a KCL file from disk.
-
-        Parameters
-        ----------
-        path : str
-            Path to the KCL file (default is DEFAULT_KCL_PATH)
-        device : optional
-            Ignored in this parser (kept for API consistency)
-
-        Returns
-        -------
-        KCL
-            Parsed KCL object
-        """
+    def from_file(cls, path: str):
+        data = None    
         with open(path, 'rb') as f:
             data = f.read()
-        return cls(data)
-
-    def _parse_positions(self, data):
-        """
-        Parse position vectors from the file.
-
-        Each position vector consists of 3 consecutive floats (X, Y, Z).
-        The number of positions is determined from the prisms indices.
-
-        Returns
-        -------
-        list
-            List of 3D vectors (tuples of floats)
-        """
-        start = self._positions_offset
-        section_size = max(self._prisms._pos_i)
-        end = section_size * 0x0C + start + 0x0C
-        d = data[start:end]
-        return [read_vector_3d(d, i) for i in range(0, len(d), 0x0C)]
-
-    def _parse_normals(self, data):
-        """
-        Parse normal vectors from the file.
-
-        Each normal vector consists of 3 consecutive floats (X, Y, Z).
-        The number of normals is determined from all prism normal indices.
-
-        Returns
-        -------
-        list
-            List of 3D normal vectors (tuples of floats)
-        """
-        start = self._normals_offset
-        section_size = max([
-            *self._prisms._fnrm_i,
-            *self._prisms._enrm1_i,
-            *self._prisms._enrm2_i,
-            *self._prisms._enrm3_i,
-        ])
-        end = section_size * 0x0C + start + 0x0C
-        d = data[start:end]
-        return [read_vector_3d(d, i) for i in range(0, len(d), 0x0C)]
-
-
-class Prisms:
-    """
-    Represents the triangular prisms section of the KCL file.
-
-    Each prism is a 0x10 byte structure with the following layout:
-
-    Offset | Type | Name      | Description
-    -------|------|----------|---------------------------------------------
-    0x00   | f32  | height   | Prism height from vertex 1 to opposite side
-    0x04   | u16  | pos_i    | Index of first vertex in positions array
-    0x06   | u16  | fnrm_i   | Face normal index
-    0x08   | u16  | enrm1_i  | Edge normal A index
-    0x0A   | u16  | enrm2_i  | Edge normal B index
-    0x0C   | u16  | enrm3_i  | Edge normal C index
-    0x0E   | u16  | attributes | Collision attributes
-
-    Attributes
-    ----------
-    _height : list[float]
-        Prism heights
-    _pos_i : list[int]
-        Vertex indices
-    _fnrm_i : list[int]
-        Face normal indices
-    _enrm1_i : list[int]
-        Edge normal 1 indices
-    _enrm2_i : list[int]
-        Edge normal 2 indices
-    _enrm3_i : list[int]
-        Edge normal 3 indices
-    _attributes : list[int]
-        Collision attribute flags
-    """
-
-    def __init__(self, data):
-        self._iter = range(0, len(data), 0x10)
-        self._height = [read_fx32(data[i:i + 0x10], 0x00) for i in self._iter]
-        self._pos_i = [read_u16(data[i:i + 0x10], 0x04) for i in self._iter]
-        self._fnrm_i = [read_u16(data[i:i + 0x10], 0x06) for i in self._iter]
-        self._enrm1_i = [read_u16(data[i:i + 0x10], 0x08) for i in self._iter]
-        self._enrm2_i = [read_u16(data[i:i + 0x10], 0x0A) for i in self._iter]
-        self._enrm3_i = [read_u16(data[i:i + 0x10], 0x0C) for i in self._iter]
-        self._attributes = [read_u16(data[i:i + 0x10], 0x0E) for i in self._iter]
-
-    def __getitem__(self, idx):
-        """
-        Return all attributes of the prism at index `idx`.
-        """
-        if idx >= len(self):
-            raise IndexError("Index out of range")
-        return [arr[idx] for arr in self.__dict__.values()]
-
-    def __len__(self):
-        """
-        Return the number of prisms in the section.
-        """
-        return len(self._pos_i)
-
-    def __iter__(self):
-        """
-        Iterate over all prisms, yielding full attribute lists.
-        """
-        for i in self._iter:
-            yield self[i // 0x10]
-
-    
-    
-
-    
-    
+            
+        assert data is not None
+        return cls.from_bytes(data)
