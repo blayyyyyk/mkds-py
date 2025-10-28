@@ -7,7 +7,7 @@ exclude = ["venv"]
 
 [project]
 name = "mkds"
-version = "0.1.1"
+version = "0.1.10"
 authors = [
     { name="Blake Moody", email="blake@moody.mx" }
 ]
@@ -23,3 +23,6 @@ license-files = ["LICEN[CS]E*"]
 [project.urls]
 Homepage = "https://github.com/gg-blake/mkds-py"
 Issues = "https://github.com/gg-blake/mkds-py/issues"
+
+[tool.setuptools.packages.find]
+where = ["mkds"]
